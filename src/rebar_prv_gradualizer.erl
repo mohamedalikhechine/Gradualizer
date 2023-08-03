@@ -144,7 +144,7 @@ get_apps(CommandApps, State) ->
 filter_apps(Apps, State) ->
     AllApps = maps:from_list(
         [
-            {binary_to_atom(rebar_app_info:name(App)), App}
+            {binary_to_atom(rebar_app_info:name(App), utf8), App}
             || App <- rebar_state:project_apps(State)
         ]
     ),
