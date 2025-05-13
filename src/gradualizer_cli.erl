@@ -30,7 +30,7 @@ start_application(Opts) ->
     ok = application:load(gradualizer),
     application:set_env(gradualizer, options, Opts),
     %% We could start the tracer based on a CLI flag, but it's config is compile-time anyway.
-    %gradualizer_tracer:start(),
+    % gradualizer_tracer:start(),
     {ok, _} = application:ensure_all_started(gradualizer).
 
 -spec handle_args([string()]) -> help | version | {error, string()} |
@@ -70,10 +70,7 @@ print_usage() ->
     io:format("                                 arguments are treated as filenames, even if~n"),
     io:format("                                 they start with hyphens.~n"),
     io:format("  -h,  --help                    display this help and exit~n"),
-    io:format("       --infer                   Infer type information from literals and other~n"),
     io:format("                                 language constructs~n"),
-    io:format("       --no_infer                Only use type information from function specs~n"),
-    io:format("                                  - the default behaviour~n"),
     io:format("       --verbose                 Show what Gradualizer is doing~n"),
     io:format("  -pa, --path_add                Add the specified directory to the beginning of~n"),
     io:format("                                 the code path; see erl -pa             [string]~n"),
@@ -92,15 +89,15 @@ print_usage() ->
     io:format("                                   (\"LINE:COLUMN:\" before message text)~n"),
     io:format("                                 - 'verbose' (default): for human readers~n"),
     io:format("                                   (\"on line LINE at column COLUMN\" within the message text)~n"),
-    io:format("       --color [ COLOR ]         - Use colors when printing fancy messages. An optional~n"),
-    io:format("                                   argument is `always | never | auto'. However, auto-~n"),
-    io:format("                                   detection of a TTY doesn't work when running as an escript.~n"),
-    io:format("       --no_color                - Alias for `--color never'~n"),
-    io:format("       --fancy                   - Use fancy error messages when possible (on by default)~n"),
-    io:format("       --no_fancy                - Don't use fancy error messages.~n"),
-    io:format("       --union_size_limit        - Performance hack: Unions larger than this value~n"),
-    io:format("                                   are replaced by any() in normalization (default: 30)~n"),
-    io:format("       --solve_constraints       - Use the experimental constraint solver (off by default)~n").
+    io:format("       --color [ COLOR ]         Use colors when printing fancy messages. An optional~n"),
+    io:format("                                 argument is `always | never | auto'. However, auto-~n"),
+    io:format("                                 detection of a TTY doesn't work when running as an escript.~n"),
+    io:format("       --no_color                Alias for `--color never'~n"),
+    io:format("       --fancy                   Use fancy error messages when possible (on by default)~n"),
+    io:format("       --no_fancy                Don't use fancy error messages.~n"),
+    io:format("       --union_size_limit        Performance hack: Unions larger than this value~n"),
+    io:format("                                 are replaced by any() in normalization (default: 30)~n"),
+    io:format("       --solve_constraints       Type check polymorphic calls (off by default)~n").
 
 -spec parse_opts([string()], gradualizer:options()) -> {[string()], gradualizer:options()}.
 parse_opts([], Opts) ->
@@ -109,8 +106,6 @@ parse_opts([A | Args], Opts) ->
     case A of
         "-h"                       -> {[], [help]};
         "--help"                   -> {[], [help]};
-        "--infer"                  -> parse_opts(Args, [infer | Opts]);
-        "--no_infer"               -> parse_opts(Args, [{infer, false} | Opts]);
         "--verbose"                -> parse_opts(Args, [verbose | Opts]);
         "-pa"                      -> handle_path_add(A, Args, Opts);
         "--path_add"               -> handle_path_add(A, Args, Opts);

@@ -177,10 +177,11 @@ start() ->
     %dbg:tpl(typechecker, do_type_check_expr_in, x),
     %dbg:tpl(typechecker, type_check_logic_op_in, x),
 
-    %dbg:tpl(typechecker, subtype, x),
-    %dbg:tpl(typechecker, compat, x),
-    %dbg:tpl(typechecker, compat_seen, x),
-    %dbg:tpl(typechecker, compat_ty, x),
+    dbg:tpl(typechecker, subtype, x),
+    dbg:tpl(typechecker, subtype_with_constraints, x),
+    dbg:tpl(typechecker, compat, x),
+    % dbg:tpl(typechecker, compat_seen, x),
+    dbg:tpl(typechecker, compat_ty, x),
 
     %dbg:tpl(typechecker, glb_ty, x),
     %dbg:tpl(typechecker, normalize, x),
@@ -204,8 +205,17 @@ start() ->
     ok.
 
 %% @doc Stop tracing.
+-if(?OTP_RELEASE >= 26).
+
+stop() ->
+    dbg:stop().
+
+-else.
+
 stop() ->
     dbg:stop_clear().
+
+-endif.
 
 %% @doc `debug/1' is a trace point to trace when pinpointing issues across several candidate
 %% locations. Uncomment the below in `start/0':

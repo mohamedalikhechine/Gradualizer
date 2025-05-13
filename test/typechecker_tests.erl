@@ -113,14 +113,29 @@ subtype_test_() ->
      ?_assert(subtype(t("fun((...) -> integer())"), t("fun((...) -> number())"))),
      ?_assert(subtype(t("fun((atom()) -> integer())"), t("fun((...) -> number())"))),
 
-     %% Type variables
-     ?_assert(subtype(?t( A                 ), ?t( integer()        ))),
-     ?_assert(subtype(?t( integer()         ), ?t( A                ))),
-
      %% Annotated types
      ?_assert(subtype(?t( integer()         ), ?t( A :: number()    ))),
      ?_assert(subtype(?t( A :: integer()    ), ?t( number()         ))),
-     ?_assert(subtype(?t( A :: integer()    ), ?t( A :: number()    )))
+     ?_assert(subtype(?t( A :: integer()    ), ?t( A :: number()    ))),
+
+     %% Type variables
+     ?_assertEqual({true, constraints:lower('A', ?t(integer()))}, subtype_cs(?t(integer()), ?t(A))),
+     ?_assertEqual({true, constraints:upper('A', ?t(integer()))}, subtype_cs(?t(A), ?t(integer()))),
+     ?_assertEqual({true, constraints:lower('A', ?t(integer()))}, subtype_cs(?t([integer()]), ?t([A]))),
+     ?_assertEqual({true, constraints:lower('A', ?t(float()))}, subtype_cs(?t({float(), true}), ?t({A, bool()}))),
+     ?_assertEqual({true, combine_cs(
+            constraints:lower('A', ?t(integer())), constraints:lower('B', ?t(atom()))
+        )}, subtype_cs(?t({integer(), atom()}), ?t({A, B}))),
+     ?_assertEqual({true, combine_cs([
+            constraints:lower('A', ?t(5)),
+            constraints:upper('A', ?t(integer())),
+            constraints:lower('B', ?t(false | true))
+        ])}, subtype_cs(t("{fun ((integer()) -> boolean()), 5}"), t("{fun ((A) -> B), A}"))),
+     ?_assertEqual({true, constraints:empty()}, subtype_cs(?t(integer()), ?t(A | B))),
+     ?_assertEqual({true, constraints:lower('A', ?t(any()))}, subtype_cs(?t(any()), ?t(A))),
+     ?_assertEqual({true, constraints:lower('A', ?t(any()))}, subtype_cs(?t(any()), ?t([A]))),
+     ?_assertEqual({true, constraints:upper('A', ?t(any()))}, subtype_cs(?t([A]), ?t(any()))),
+     ?_assertEqual({true, constraints:lower('A', ?t(any()))}, subtype_cs(?t(any()), ?t({A, atom()})))
     ].
 
 not_subtype_test_() ->
@@ -168,14 +183,18 @@ not_subtype_test_() ->
      ?_assertNot(subtype(?t( #{}            ), ?t( #{a := b}                            ))),
      ?_assertNot(subtype(?t( #{a => b}      ), ?t( #{a := b}                            ))),
      ?_assertNot(subtype(?t( #{a := 1..5}   ), ?t( #{a := 2}                            ))),
-     ?_assertNot(subtype(?t( #{1 := atom()} ), ?t( #{1 := a}                            )))
+     ?_assertNot(subtype(?t( #{1 := atom()} ), ?t( #{1 := a}                            ))),
      %% TODO: We're not capable of handling maps with overlapping keys yet.
      %?_assertNot(subtype(?t( #{5 := pid()}  ), ?t( #{1..10 => integer(), _ => pid()}    )))
+
+     %% Type variables
+     ?_assertNot(subtype_cs(?t( integer()   ), ?t( [A]                                  ))),
+     ?_assertNot(subtype_cs(?t( {a, b}      ), ?t( {A, c}                               )))
     ].
 
 -define(glb(T1, T2, R),
-    [ ?_assertEqual(deep_normalize(R), deep_normalize(element(1,glb(T1, T2)))),
-      ?_assertEqual(deep_normalize(R), deep_normalize(element(1,glb(T2, T1)))) ]).
+    [ ?_assertEqual(deep_normalize(R), deep_normalize(glb(T1, T2))),
+      ?_assertEqual(deep_normalize(R), deep_normalize(glb(T2, T1))) ]).
 
 glb_test_() ->
 
@@ -346,20 +365,18 @@ normalize_e2e_test_() ->
     ].
 
 propagate_types_test_() ->
-    %% Checking type_check_expr, which propagates type information but doesn't
-    %% infer types of literals and language constructs.
-    [%% the inferred type of a literal tuple should be any()
-     ?_assertEqual("any()",
+    %% Checking type_check_expr, which propagates type information
+    %% and infers types of literals and language constructs.
+    [%% the inferred type of a literal tuple
+     ?_assertEqual("{1, 2}",
                    type_check_expr(_Env = "",
                                    _Expr = "{1, 2}")),
      %% the inferred type of a tuple with a untyped function call
-     %% should also be any()
-     ?_assertMatch("any()",
+     ?_assertMatch("{1, any()}",
                    type_check_expr(_Env = "h() -> 2.",
                                    _Expr = "{1, h()}")),
      %% the inferred type of a tuple with a typed function call
-     %% should be {any(), restype()}
-     ?_assertMatch("{any(), integer()}",
+     ?_assertMatch("{1, integer()}",
                    type_check_expr(_Env = "-spec h() -> integer().",
                                    _Expr = "{1, h()}")),
 
@@ -370,7 +387,7 @@ propagate_types_test_() ->
                                           "-spec c() -> 3.",
                                    _Expr = "[a(), b(), c()]")),
      %% Fun.
-     ?_assertMatch("any()",
+     ?_assertMatch("fun((any(), any()) -> any())",
                    type_check_expr(_Env = "",
                                    _Expr = "fun (_A, _B) ->\n"
                                            "    receive C -> C end\n"
@@ -418,12 +435,7 @@ propagate_types_test_() ->
                                    _Expr = "- f()")),
      ?_assertMatch("-2..-1 | non_neg_integer()",
                    type_check_expr(_Env = "-spec f() -> neg_integer() | 0..2.",
-                                   _Expr = "- f()")),
-
-     %% inferred type of record index
-     ?_assertMatch("any()",
-                   type_check_expr(_Env = "",
-                                   _Expr = "#r.f"))
+                                   _Expr = "- f()"))
     ].
 
 type_check_in_test_() ->
@@ -437,52 +449,43 @@ type_check_in_test_() ->
      %% Although there is no spec for f/1 - inferred type is `fun((any()) -> any())'
      ?_assert(type_check_forms(["f(_) -> 42.",
                                 "-spec g() -> fun((integer()) -> integer()).",
-                                "g() -> fun f/1."],
-                               [infer])),
+                                "g() -> fun f/1."])),
      %% Although there is no spec for f/1 - inferred arity does not match
      ?_assertNot(type_check_forms(["-spec g() -> fun(() -> integer()).",
                                    "g() -> fun f/1.",
-                                   "f(_) -> ok."],
-                                  [infer]))
+                                   "f(_) -> ok."]))
     ].
 
 infer_types_test_() ->
-    %% Checking type_check_expr with inference enabled
+    %% Checking type_check_expr with inference
     [?_assertEqual("{1, [101 | 104 | 108 | 111, ...], [], banana, float(), $c}",
                    type_check_expr(_Env = "",
-                                   _Expr = "{1, \"hello\", \"\", banana, 3.14, $c}",
-                                   [infer])),
+                                   _Expr = "{1, \"hello\", \"\", banana, 3.14, $c}")),
      %% the inferred type of a tuple with a untyped function call
      %% should be any()
      ?_assertMatch("{1, any()}",
                    type_check_expr(_Env = "h() -> 2.",
-                                   _Expr = "{1, h()}",
-                                   [infer])),
+                                   _Expr = "{1, h()}")),
      %% the inferred type of a tuple with a typed function call
      ?_assertMatch("{1, integer()}",
                    type_check_expr(_Env = "-spec h() -> integer().",
-                                   _Expr = "{1, h()}",
-                                   [infer])),
+                                   _Expr = "{1, h()}")),
      %% catch a type error that isn't caught without this inference.
      ?_assertNot(type_check_forms(["f() -> V = [1, 2], g(V).",
                                    "-spec g(integer()) -> any().",
-                                   "g(Int) -> Int + 1."],
-                                  [infer])),
+                                   "g(Int) -> Int + 1."])),
      %% infer exact type of bitstrings
      ?_assertMatch("<<_:7, _:_*16>>",
                    type_check_expr(_Env = "f() -> receive X -> X end.",
-                                   _Expr = "<<(f())/utf16, 7:7>>",
-                                   [infer])),
+                                   _Expr = "<<(f())/utf16, 7:7>>")),
      %% infer exact type of strings
      ?_assertMatch("[$0..$c, ...]",
                    type_check_expr(_Env = "",
-                                   _Expr = "\"0123456789abc\"",
-                                   [infer])),
+                                   _Expr = "\"0123456789abc\"")),
      %% infer exact type of record index
      ?_assertMatch("2",
                    type_check_expr(_Env = "-record(r, {f}).",
-                                   _Expr = "#r.f",
-                                   [infer]))
+                                   _Expr = "#r.f"))
     ].
 
 type_check_call_test_() ->
@@ -774,6 +777,73 @@ type_diff_test_() ->
                                           gradualizer:env()))
     ]}.
 
+variances_test_() ->
+    [
+        ?_assertEqual(#{},                      type_vars_variances(?t(integer()))),
+        ?_assertEqual(#{},                      type_vars_variances(?t({integer(), boolean()}))),
+        ?_assertEqual(#{},                      type_vars_variances(?t([atom()]))),
+        ?_assertEqual(#{'X' => covariant},      type_vars_variances(?t(X))),
+        ?_assertEqual(#{'X' => covariant},      type_vars_variances(?t({integer(), X}))),
+        ?_assertEqual(#{'X' => covariant},      type_vars_variances(?t([X]))),
+        ?_assertEqual(#{'A' => covariant, 'X' => covariant},                type_vars_variances(?t([A | {abc, X} | d] | number()))),
+        ?_assertEqual(#{'X' => covariant},      type_vars_variances(?t({X, X}))),
+        ?_assertEqual(#{'X' => covariant},      type_vars_variances(?t({X, integer(), X}))),
+        ?_assertEqual(#{'X' => covariant},      type_vars_variances(?t({a, X} | {b, X}))),
+        ?_assertEqual(#{'X' => contravariant},  type_vars_variances(t("fun ((X) -> boolean())"))),
+        ?_assertEqual(#{'X' => contravariant},  type_vars_variances(t("fun ((X, integer()) -> boolean())"))),
+        ?_assertEqual(#{'X' => covariant},      type_vars_variances(t("fun ((boolean()) -> X)"))),
+        ?_assertEqual(#{'X' => contravariant, 'Y' => covariant}, type_vars_variances(t("fun ((X) -> Y)"))),
+        ?_assertEqual(#{'X' => covariant},      type_vars_variances(t("fun ((...) -> X)"))),
+        ?_assertEqual(#{'X' => covariant},      type_vars_variances(t("fun (() -> X)"))),
+        ?_assertEqual(#{'X' => invariant},      type_vars_variances(t("fun ((X) -> X)"))),
+        ?_assertEqual(#{'X' => invariant},      type_vars_variances(t("{boolean(), fun ((X) -> X)}"))),
+        ?_assertEqual(#{'X' => invariant},      type_vars_variances(t("{X, fun ((X) -> X)}"))),
+        ?_assertEqual(#{'X' => invariant, 'Y' => contravariant, 'Z' => covariant},
+                                                type_vars_variances(t("{fun ((Y) -> X), fun ((X) -> Z)}")))
+    ].
+
+minimal_substitution1_test() ->
+    %% id(5)
+    Cs = constraints:lower('X', ?t(5)),
+    ?assertEqual(#{'X' => ?t(5)}, typechecker:minimal_substitution(Cs, ?t(X))).
+
+minimal_substitution2_test() ->
+    %% lists:filter(fun even/1, [1, 13, 42])
+    Cs = constraints:combine([
+        constraints:upper('A', ?t(integer())),
+        constraints:lower('A', ?t(1)),
+        constraints:lower('A', ?t(13)),
+        constraints:lower('A', ?t(42))
+    ], gradualizer:env()),
+    ?assertEqual(#{'A' => ?t(1 | 13 | 42)}, typechecker:minimal_substitution(Cs, ?t([A]))).
+
+minimal_substitution3_test() ->
+    %% lists:map(fun math:log/1, [1, 3.14])
+    Cs = constraints:combine([
+        constraints:upper('A', ?t(number())),
+        constraints:lower('B', ?t(float())),
+        constraints:lower('A', ?t(1)),
+        constraints:lower('A', ?t(float()))
+    ], gradualizer:env()),
+    ?assertEqual(#{'B' => ?t(float())}, typechecker:minimal_substitution(Cs, ?t([B]))).
+
+minimal_substitution4_test() ->
+    %% invariant case with multiple substitutions
+    Cs = constraints:combine([
+        constraints:upper('A', ?t(number())),
+        constraints:lower('A', ?t(integer()))
+    ], gradualizer:env()),
+    ?assertEqual(#{'A' => ?t(integer() | any())},
+        typechecker:minimal_substitution(Cs, t("{fun ((A) -> bool()), A}"))).
+
+minimal_substitution5_test() ->
+    %% invariant case with a single substitution
+    Cs = constraints:combine([
+        constraints:upper('A', ?t(number())),
+        constraints:lower('A', ?t(number()))
+    ], gradualizer:env()),
+    ?assertEqual(#{'A' => ?t(number())},
+        typechecker:minimal_substitution(Cs, t("{fun ((A) -> bool()), A}"))).
 %%
 %% Helper functions
 %%
@@ -787,12 +857,16 @@ cleanup_app(Apps) ->
     ok.
 
 subtype(T1, T2) ->
-    case typechecker:subtype(T1, T2, test_lib:create_env([])) of
-        {true, _} ->
-            true;
-        false ->
-            false
-    end.
+    typechecker:subtype(T1, T2, test_lib:create_env([])).
+
+subtype_cs(T1, T2) ->
+    typechecker:subtype_with_constraints(T1, T2, test_lib:create_env([])).
+
+combine_cs(Cs1, Cs2) ->
+    constraints:combine(Cs1, Cs2, test_lib:create_env([])).
+
+combine_cs(Css) ->
+    constraints:combine(Css, test_lib:create_env([])).
 
 glb(T1, T2) ->
     glb(T1, T2, test_lib:create_env([])).
@@ -822,10 +896,13 @@ type_check_expr(EnvStr, ExprString) ->
 type_check_expr(EnvStr, ExprString, Opts) ->
     Env = test_lib:create_env(EnvStr, Opts),
     Expr = merl:quote(ExprString),
-    {Ty, _VarBinds, _Cs} = typechecker:type_check_expr(Env, Expr),
+    {Ty, _VarBinds} = typechecker:type_check_expr(Env, Expr),
     typelib:pp_type(Ty).
 
 type_pat(Pat, Ty) ->
-    {[PatTy], _UBounds, _Env, _Css} =
+    {[PatTy], _UBounds, _Env} =
         typechecker:add_types_pats([Pat], [Ty], gradualizer:env(), capture_vars),
         PatTy.
+
+type_vars_variances(Type) ->
+    typechecker:type_vars_variances(Type).
