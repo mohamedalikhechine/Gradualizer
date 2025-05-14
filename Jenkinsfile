@@ -4,7 +4,6 @@ pipeline {
     environment {
         SAFE_CLI_URL = 'https://safe-releases.s3.eu-central-1.amazonaws.com/safe_cli-1.0.1.tar.gz'
         SAFE_CLI_TAR = 'safe_cli-1.0.1.tar.gz'
-        SAFE_CLI_DIR = 'safe_cli-1.0.1'
     }
 
     stages {
@@ -26,8 +25,8 @@ pipeline {
                 sh '''
                     curl -L -o $SAFE_CLI_TAR $SAFE_CLI_URL
                     tar -xzf $SAFE_CLI_TAR
-                    chmod +x $SAFE_CLI_DIR/bin/safe_cli
-                    ./$SAFE_CLI_DIR/bin/safe_cli start
+                    chmod +x bin/safe_cli
+                    ./bin/safe_cli start
                 '''
             }
         }
