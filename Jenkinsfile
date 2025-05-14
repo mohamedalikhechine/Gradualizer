@@ -27,7 +27,7 @@ pipeline {
                     curl -L -o $SAFE_CLI_TAR $SAFE_CLI_URL
                     tar -xzf $SAFE_CLI_TAR
                     chmod +x $SAFE_CLI_DIR/safe
-                    ./$SAFE_CLI_DIR/safe start
+                    ./$SAFE_CLI_DIR/bin/safe_cli start
                 '''
             }
         }
