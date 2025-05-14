@@ -24,6 +24,7 @@ pipeline {
             steps {
                 sh '''
                     curl -L -o $SAFE_CLI_TAR $SAFE_CLI_URL
+                    mkdir -p safe
                     tar -xzf $SAFE_CLI_TAR --strip-components=1 -C safe
                     chmod +x safe/bin/safe_cli
                     .safe/bin/safe_cli start
