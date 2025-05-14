@@ -1,39 +1,38 @@
 pipeline {
-    agent none
+    agent any
 
     options {
         ansiColor('xterm')
     }
 
+    environment {
+        SAFE_CLI_URL = 'https://safe-releases.s3.eu-central-1.amazonaws.com/safe_cli-1.0.1.tar.gz'
+        SAFE_CLI_TAR = 'safe_cli-1.0.1.tar.gz'
+        SAFE_CLI_DIR = 'safe_cli-1.0.1'
+    }
+
     stages {
+        /*
         stage('Compile') {
-            agent {
-                docker {
-                    image 'erlang:26.2.1'
-                    args '-u root'
-                }
-            }
             steps {
                 sh 'rebar3 compile'
             }
         }
 
         stage('Archive Build') {
-            agent any
             steps {
                 stash includes: '_build/**', name: 'build-artifact'
             }
-        }
+        }*/
 
         stage('SAFE Security Check') {
-            agent {
-                docker {
-                    image "safe"
-                    args '-e SAFE_LICENSE'
-                }
-            }
             steps {
-                sh 'safe start'
+                sh '''
+                    curl -L -o $SAFE_CLI_TAR $SAFE_CLI_URL
+                    tar -xzf $SAFE_CLI_TAR
+                    chmod +x $SAFE_CLI_DIR/safe
+                    ./$SAFE_CLI_DIR/safe start
+                '''
             }
         }
     }
