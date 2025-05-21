@@ -9,21 +9,23 @@ pipeline {
     }
 
     stages {
-        /*
-        stage('Compile') {
+        stage('Build with Rebar3') {
             steps {
+                echo 'Compiling project with Rebar3...'
                 sh 'rebar3 compile'
             }
         }
 
-        stage('Archive Build') {
+        stage('Archive Build Artifacts') {
             steps {
+                echo 'Archiving build artifacts...'
                 stash includes: '_build/**', name: 'build-artifact'
             }
-        }*/
+        }
 
         stage('SAFE Security Check') {
             steps {
+                echo 'Running SAFE CLI for security scanning...'
                 sh '''
                     curl -L -o $SAFE_CLI_TAR $SAFE_CLI_URL
                     mkdir -p safe
