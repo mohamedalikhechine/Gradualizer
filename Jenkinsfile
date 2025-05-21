@@ -4,6 +4,8 @@ pipeline {
     environment {
         SAFE_CLI_URL = 'https://safe-releases.s3.eu-central-1.amazonaws.com/safe_cli-1.0.1.tar.gz'
         SAFE_CLI_TAR = 'safe_cli-1.0.1.tar.gz'
+        SAFE_LICENSE = credentials('SAFE_LICENSE')
+        SAFE_CI_CONFIG_PATH = "${WORKSPACE}/.safe/config.json"
     }
 
     stages {
