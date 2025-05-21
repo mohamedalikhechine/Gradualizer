@@ -1,0 +1,17 @@
+{
+  "output": "stdio",
+  "version": "1.0",
+  "project": {
+    "name": "Gradualizer",
+    "type": "beam",
+    "apps": [
+      {
+        "name": "gradualizer",
+        "additional_includes": []
+      }
+    ],
+    "paths": [
+      "_build/default/lib"
+    ]
+  }
+}
