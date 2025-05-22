@@ -16,7 +16,8 @@ pipeline {
                 sh '''
                     curl -L -o rebar3 $REBAR3_URL
                     chmod +x rebar3
-                    mv rebar3 /usr/local/bin/rebar3
+                    ./rebar3 local install
+                    export PATH=/root/.cache/rebar3/bin:$PATH
                 '''
             }
         }
