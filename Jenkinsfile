@@ -25,7 +25,7 @@ pipeline {
         stage('Build with Rebar3') {
             steps {
                 echo 'Compiling project with Rebar3...'
-                sh 'rebar3 compile'
+                sh './rebar3 compile'
             }
         }
 
