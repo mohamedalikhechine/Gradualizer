@@ -16,7 +16,7 @@ pipeline {
                 sh '''
                     curl -L -o rebar3 $REBAR3_URL
                     chmod +x rebar3
-                    mv rebar3 /usr/local/bin/rebar3 || sudo mv rebar3 /usr/local/bin/rebar3
+                    mv rebar3 /usr/local/bin/rebar3
                 '''
             }
         }
