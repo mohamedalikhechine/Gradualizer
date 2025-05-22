@@ -6,9 +6,21 @@ pipeline {
         SAFE_CLI_TAR = 'safe_cli-1.0.1.tar.gz'
         SAFE_LICENSE = credentials('SAFE_LICENSE')
         SAFE_CI_CONFIG_PATH = "${WORKSPACE}/.safe/config.json"
+        REBAR3_URL = 'https://s3.amazonaws.com/rebar3/rebar3'
     }
 
     stages {
+        stage('Install Rebar3') {
+            steps {
+                echo 'Installing rebar3...'
+                sh '''
+                    curl -L -o rebar3 $REBAR3_URL
+                    chmod +x rebar3
+                    mv rebar3 /usr/local/bin/rebar3 || sudo mv rebar3 /usr/local/bin/rebar3
+                '''
+            }
+        }
+
         stage('Build with Rebar3') {
             steps {
                 echo 'Compiling project with Rebar3...'
