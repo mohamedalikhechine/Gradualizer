@@ -7,6 +7,7 @@ pipeline {
         SAFE_LICENSE = credentials('SAFE_LICENSE')
         SAFE_CI_CONFIG_PATH = "${WORKSPACE}/.safe/config.json"
         REBAR3_URL = 'https://s3.amazonaws.com/rebar3/rebar3'
+        ERL_LIBS = '/var/jenkins_home/safe/lib'
     }
 
     stages {
