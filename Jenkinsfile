@@ -41,16 +41,23 @@ pipeline {
             steps {
                 echo 'Running SAFE CLI for security scanning...'
                 sh '''
-                    curl -L -o $SAFE_CLI_TAR $SAFE_CLI_URL
-                    mkdir -p safe
-                    tar -xzf $SAFE_CLI_TAR -C safe
-                    chmod +x safe/bin/safe_cli
-                    ./safe/bin/safe_cli start
-
-                    curl -X POST -H "Content-Type: application/json" -d @Gradualizer.safe https://safe-on-prem.fly.dev/api/reports
+                curl -L -o $SAFE_CLI_TAR $SAFE_CLI_URL
+                mkdir -p safe
+                tar -xzf $SAFE_CLI_TAR -C safe
+                chmod +x safe/bin/safe_cli
+                ./safe/bin/safe_cli start
                 '''
             }
-        }
+            post {
+                always {
+                    echo 'Uploading SAFE report regardless of scan result...'
+                    sh '''
+                        curl -X POST -H "Content-Type: application/json" -d @Gradualizer.safe https://safe-on-prem.fly.dev/api/reports || true
+                    '''
+                }
+            }
+    }
+
     }
 
     post {
