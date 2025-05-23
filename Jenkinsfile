@@ -23,6 +23,17 @@ pipeline {
             }
         }
 
+        stage('Pre-clean up') {
+            steps {
+                echo 'Cleaning up previous builds...'
+                sh '''
+                    rm -rf _build
+                    rm -rf safe
+                    rm -rf /var/jenkins_home/.cache/SAFE/data_Gradualizer
+                '''
+            }
+        }
+
         stage('Build with Rebar3') {
             steps {
                 echo 'Compiling project with Rebar3...'
