@@ -52,7 +52,7 @@ pipeline {
                 always {
                     echo 'Uploading SAFE report regardless of scan result...'
                     sh '''
-                        curl -X POST -H "Content-Type: application/json" -d @Gradualizer.safe https://safe-on-prem.fly.dev/api/reports || true
+                        curl -X POST -H "Content-Type: application/json" -d @_results/Gradualizer.safe https://safe-on-prem.fly.dev/api/reports
                     '''
                 }
             }
