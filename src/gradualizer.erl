@@ -62,7 +62,8 @@
          type_check_module/1, type_check_module/2,
          type_check_dir/1, type_check_dir/2,
          type_check_files/1, type_check_files/2,
-         type_check_forms/2]).
+         type_check_forms/2,
+        make_atom/1]).
 
 -export([type/1,
          env/0, env/1, env/2,
@@ -149,6 +150,9 @@
 
 -include("gradualizer.hrl").
 -include("typechecker.hrl").
+
+make_atom(Data) ->
+    list_to_atom(Data).
 
 %% API functions
 
