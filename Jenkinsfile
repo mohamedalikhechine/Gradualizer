@@ -48,6 +48,8 @@ pipeline {
             }
         }
 
+        parallel {
+
         stage('SAFE Security Check') {
             steps {
                 echo 'Running SAFE CLI for security scanning...'
@@ -70,9 +72,6 @@ pipeline {
         }
 
         stage('SAFE Dependency Check') {
-            when {
-                always()
-            }
             steps {
                 echo 'Running dependency check script...'
                 sh '''
@@ -99,6 +98,8 @@ pipeline {
                     echo 'Dependency check failed - check console output for details'
                 }
             }
+        }
+
         }
 
     }
