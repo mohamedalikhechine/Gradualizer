@@ -70,6 +70,9 @@ pipeline {
         }
 
         stage('SAFE Dependency Check') {
+            when {
+                always()
+            }
             steps {
                 echo 'Running dependency check script...'
                 sh '''
