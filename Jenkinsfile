@@ -48,60 +48,59 @@ pipeline {
             }
         }
 
-        parallel {
-
-        stage('SAFE Security Check') {
-            steps {
-                echo 'Running SAFE CLI for security scanning...'
-                sh '''
-                curl -L -o $SAFE_CLI_TAR $SAFE_CLI_URL
-                mkdir -p safe
-                tar -xzf $SAFE_CLI_TAR -C safe
-                chmod +x safe/bin/safe_cli
-                ./safe/bin/safe_cli start
-                '''
-            }
-            post {
-                always {
-                    echo 'Uploading SAFE report regardless of scan result...'
-                    sh '''
+        stage('SAFE Checks') {
+            parallel {
+                stage('SAFE Security Check') {
+                    steps {
+                        echo 'Running SAFE CLI for security scanning...'
+                        sh '''
+                        curl -L -o $SAFE_CLI_TAR $SAFE_CLI_URL
+                        mkdir -p safe
+                        tar -xzf $SAFE_CLI_TAR -C safe
+                        chmod +x safe/bin/safe_cli
+                        ./safe/bin/safe_cli start
+                        '''
+                    }
+                    post {
+                        always {
+                            echo 'Uploading SAFE report regardless of scan result...'
+                            sh '''
                         curl -X POST -H "Content-Type: application/json" -d @_results/Gradualizer.safe https://safe-on-prem.fly.dev/api/reports
                     '''
+                        }
+                    }
+                }
+
+                stage('SAFE Dependency Check') {
+                    steps {
+                        echo 'Running dependency check script...'
+                        sh '''
+                        echo "Downloading audit script from S3..."
+                        curl -L -o audit.sh https://audit-script-safe.s3.us-east-1.amazonaws.com/audit.sh
+    
+                        if [ $? -eq 0 ] && [ -f "./audit.sh" ]; then
+                            chmod +x ./audit.sh
+                            echo "Running dependency check..."
+                            ./audit.sh
+                        else
+                            echo "ERROR: Failed to download audit.sh from S3 bucket"
+                            exit 1
+                        fi
+                        '''
+                    }
+                    post {
+                        always {
+                            echo 'Dependency check stage completed.'
+                            // Clean up downloaded script
+                            sh 'rm -f ./audit.sh'
+                        }
+                        failure {
+                            echo 'Dependency check failed - check console output for details'
+                        }
+                    }
                 }
             }
         }
-
-        stage('SAFE Dependency Check') {
-            steps {
-                echo 'Running dependency check script...'
-                sh '''
-                    echo "Downloading audit script from S3..."
-                    curl -L -o audit.sh https://audit-script-safe.s3.us-east-1.amazonaws.com/audit.sh
-                    
-                    if [ $? -eq 0 ] && [ -f "./audit.sh" ]; then
-                        chmod +x ./audit.sh
-                        echo "Running dependency check..."
-                        ./audit.sh
-                    else
-                        echo "ERROR: Failed to download audit.sh from S3 bucket"
-                        exit 1
-                    fi
-                '''
-            }
-            post {
-                always {
-                    echo 'Dependency check stage completed.'
-                    // Clean up downloaded script
-                    sh 'rm -f ./audit.sh'
-                }
-                failure {
-                    echo 'Dependency check failed - check console output for details'
-                }
-            }
-        }
-
-        }
-
     }
 
     post {
