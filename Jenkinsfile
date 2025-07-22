@@ -6,7 +6,7 @@ pipeline {
     }
 
     parameters {
-        string(name: 'DOCKER_NAME', defaultValue: 'safe', description: 'Docker image to use for compile stage')
+        string(name: 'erlangsolutions/safe_dev:checkmarx_demo', defaultValue: 'erlangsolutions/safe_dev:checkmarx_demo', description: 'Docker image to use for compile stage')
     }
 
     stages {  
