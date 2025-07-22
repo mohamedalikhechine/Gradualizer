@@ -14,7 +14,7 @@ pipeline {
             agent {
                 docker {
                     image 'erlang:26.2.1'
-                    args '-u root'
+                    args '-u root --privileged'
                 }
             }
             steps {
