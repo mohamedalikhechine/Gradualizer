@@ -33,7 +33,7 @@ pipeline {
             agent {
                 docker {
                     image "${params.DOCKER_NAME}"
-                    args '-e SAFE_LICENSE'
+                    args '-e SAFE_LICENSE --privileged'
                 }
             }
             steps {
