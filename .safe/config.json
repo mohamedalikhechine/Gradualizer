@@ -1,5 +1,5 @@
 {
-  "output": "stdio",
+  "output": ["stdio", "checkmarx"],
   "version": "1.0",
   "project": {
     "name": "Gradualizer",
